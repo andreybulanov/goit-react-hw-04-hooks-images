@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 import './App.css';
 import ImageGallery from './Components/ImageGallery/imageGallery.jsx';
 import { fetchImages } from './Components/Utils/fetchApi.jsx';
@@ -8,30 +8,25 @@ import Spinner from './Components/Loader/Loader.jsx';
 import LoadMoreButton from './Components/Button/Button.jsx';
 import toast, { Toaster } from 'react-hot-toast';
 
-export default class App extends Component {
-  state = {
-    images: [],
-    page: 1,
-    selectedImage: null,
-    searchImage: null,
-    status: 'free',
-    error: null,
-    loading: false,
-    showModal: false,
-  };
+export default function App() {
+  const [images, setImages] = useState([]);
+  const [page, setPage] = useState(1);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [searchImage, setSearchImage] = useState('');
+  const [status, setStatus] = useState('idle');
+  const [showModal, setShowModal] = useState(false);
 
-  async componentDidUpdate(prevProps, prevState) {
-    const { searchImage, page } = this.state;
+  useEffect(() => {
+    if (!searchImage) return;
 
-    if (prevState.searchImage !== searchImage || prevState.page !== page) {
+    (async () => {
       try {
-        this.setState({ status: 'pending' });
-        const gallery = await fetchImages(searchImage, page);
+        setStatus('pending');
+        setSelectedImage('');
 
-        this.setState({ status: 'resolved' });
-
-        if (searchImage.trim() === '' || gallery.length === 0) {
-          return toast(`Here is no images to show`, {
+        const images = await fetchImages(searchImage);
+        if (images.length === 0) {
+          toast(`Here is no images to show`, {
             icon: '👏',
             style: {
               borderRadius: '10px',
@@ -41,53 +36,51 @@ export default class App extends Component {
             },
           });
         }
-        this.setState({ images: [...this.state.images, ...gallery] });
-
-        window.scrollTo({
-          top: document.documentElement.scrollHeight,
-          behavior: 'smooth',
-        });
+        setStatus('resolved');
+        setImages(images);
       } catch (error) {
-        this.setState({ status: 'reject' });
         toast.error('Error');
       }
-    }
-  }
+    })();
+  }, [searchImage]);
 
-  handleSubmit = searchImage => {
-    this.setState({ searchImage: searchImage, page: 1, images: [] });
+  const BtnLoadMore = async () => {
+    setPage(prev => prev + 1);
+    const images = await fetchImages(searchImage, page + 1);
+    setImages(prev => [...prev, ...images]);
+    window.scrollTo({
+      top: document.documentElement.scrollHeight,
+      behavior: 'smooth',
+    });
   };
 
-  handleSelectImg = imageURL => {
-    this.setState(prevState => ({
-      showModal: !prevState.showModal,
-      selectedImage: imageURL,
-    }));
+  const handleSubmit = searchImage => {
+    setImages([]);
+    setSearchImage(searchImage);
+    setPage(1);
   };
 
-  BtnLoadMore = () => {
-    this.setState(p => ({ page: p.page + 1 }));
+  const handleSelectImg = imageURL => {
+    setShowModal(true);
+    setSelectedImage(imageURL);
   };
 
-  render() {
-    const { images, status, selectedImage, showModal } = this.state;
-    const showBtn = images.length >= 1;
+  const showBtn = images.length >= 1;
 
-    return (
-      <>
-        <Searchbar onSubmit={this.handleSubmit} />
-        {status === 'pending' && <Spinner />}
-        <ImageGallery images={images} onSelect={this.handleSelectImg} />
-        {showBtn && <LoadMoreButton onClick={this.BtnLoadMore} />}
-        {showModal && (
-          <Modal
-            src={selectedImage.largeImageURL}
-            alt={selectedImage.tags}
-            onSelect={this.handleSelectImg}
-          />
-        )}
-        <Toaster />
-      </>
-    );
-  }
+  return (
+    <>
+      <Searchbar onSubmit={handleSubmit} />
+      {status === 'pending' && <Spinner />}
+      <ImageGallery images={images} onSelect={handleSelectImg} />
+      {showBtn && <LoadMoreButton onClick={BtnLoadMore} />}
+      {showModal && (
+        <Modal
+          src={selectedImage.largeImageURL}
+          alt={selectedImage.tags}
+          onSelect={handleSelectImg}
+        />
+      )}
+      <Toaster />
+    </>
+  );
 }
