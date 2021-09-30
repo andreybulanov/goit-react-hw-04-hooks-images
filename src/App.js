@@ -61,7 +61,7 @@ export default function App() {
   };
 
   const handleSelectImg = imageURL => {
-    setShowModal(true);
+    setShowModal(!showModal);
     setSelectedImage(imageURL);
   };
 
