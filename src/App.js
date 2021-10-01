@@ -24,7 +24,7 @@ export default function App() {
         setStatus('pending');
         setSelectedImage('');
 
-        const images = await fetchImages(searchImage);
+        const images = await fetchImages(searchImage, page);
         if (images.length === 0) {
           toast(`Here is no images to show`, {
             icon: '👏',
@@ -42,7 +42,7 @@ export default function App() {
         toast.error('Error');
       }
     })();
-  }, [searchImage]);
+  }, [searchImage, page]);
 
   const BtnLoadMore = async () => {
     setPage(prev => prev + 1);
